@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificación de Certificado</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#ffffff;
+    color:#222;
+}
+
+/* HEADER - Logo Centrado */
+.header{
+    background:#5cb1ff;
+    padding:15px 20px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    width: 100%;
+}
+
+.header-logo{
+    width:100%;
+    max-width:340px;
+    height:auto;
+}
+
+/* CONTENIDO PRINCIPAL */
+.container{
+    max-width:100%;
+    margin:auto;
+    padding:25px 20px;
+}
+
+.title{
+    font-size:32px;
+    font-weight:700;
+    color:#212529;
+    margin-bottom:15px;
+    letter-spacing: -0.5px;
+}
+
+.info-box{
+    background:transparent;
+    margin-bottom:20px;
+}
+
+.info{
+    font-size:24px;
+    margin-bottom:12px;
+    color:#212529;
+}
+
+.info strong{
+    font-weight: 700;
+}
+
+/* ==========================================
+   PANTALLA DE CARGA 
+   ========================================== */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 60px;
+    min-height: 60vh;
+    background: #f1f3f4;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.loading-text {
+    font-size: 18px;
+    color: #5f6368;
+    margin-bottom: 30px;
+}
+
+.dots-container {
+    display: flex;
+    gap: 8px;
+}
+
+.dot {
+    width: 14px;
+    height: 14px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    animation: blink 1.4s infinite both;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+    0%, 80%, 100% { opacity: 0.2; }
+    40% { opacity: 1; }
+}
+
+/* ==========================================
+   VISOR DE EXPEDIENTE
+   ========================================== */
+.viewer{
+    background:#ffffff;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 10px;
+}
+
+/* NAVBAR / TOOLBAR */
+.toolbar{
+    background:#ffffff;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:6px 15px;
+    border-bottom:1px solid #e0e0e0;
+    user-select: none;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Botón de 3 Rayitas con 3 Puntitos */
+.menu-icon-custom {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 8px 10px;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    background: #ffffff;
+    transition: background 0.2s;
+}
+
+.menu-icon-custom:hover { background: #f5f5f5; }
+
+.menu-item-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dot-indicator {
+    width: 3px;
+    height: 3px;
+    background-color: #555555;
+    border-radius: 50%;
+}
+
+.menu-line {
+    width: 16px;
+    height: 2px;
+    background-color: #555555;
+    border-radius: 1px;
+}
+
+/* ==========================================
+   CONTENEDOR CON EMPUJE REAL ACTIVO
+   ========================================== */
+.workspace-container {
+    display: flex;
+    width: 100%;
+    background: #f1f3f4; 
+    min-height: 70vh;
+    overflow: hidden;
+}
+
+/* PANEL LATERAL (Ancho fijo controlado por transiciones de Flexbox) */
+.sidebar {
+    width: 0;
+    background: #ffffff;
+    overflow: hidden;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    flex-shrink: 0; /* Evita que el contenedor colapse internamente */
+}
+
+/* Cuando se abre el panel lateral toma dimensión física e interactiva */
+.sidebar.open { 
+    width: 140px; 
+    border-right: 1px solid #dcdcdc;
+}
+
+.thumbnail-box {
+    width: 95px;
+    background: white;
+    padding: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    border: 1px solid #cccccc;
+}
+.thumbnail-img { width: 100%; height: auto; display: block; }
+
+/* CONTENEDOR PRINCIPAL - Ocupa el espacio restante y reacciona al empuje */
+.pdf-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 15px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    transition: margin-left 0.25s ease; /* Transición sincronizada */
+}
+
+/* LA HOJA: Bloquea deformación y se redimensiona limpiamente con el Zoom */
+.pdf-viewer {
+    width: 90%; /* Ancho dinámico inicial basado en el contenedor base */
+    max-width: 800px;
+    height: auto;
+    border: 1px solid #dcdcdc;
+    background: white;
+    box-shadow: 0px 1px 4px rgba(0,0,0,0.1);
+    display: block;
+    flex-shrink: 0; /* Garantiza que mantenga proporciones intactas al empujar */
+    transition: width 0.2s ease;
+}
+
+/* CONTROLES DE NAVBAR */
+.toolbar-center {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.zoom-btn {
+    border: none;
+    background: transparent;
+    color: #555555;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0 6px;
+    outline: none;
+}
+
+/* MENSAJE DE ERROR */
+.error-message {
+    background:#f8d7da;
+    padding:20px;
+    border-radius:5px;
+    text-align:center;
+    font-size:18px;
+    color:#721c24;
+    border: 1px solid #f5c6cb;
+    margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <img src="logo.png" class="header-logo" alt="Ministerio de Salud Pública y Asistencia Social">
+</div>
+
+<div class="container">
+
+    <div class="title">
+        Verificación de Certificado
+    </div>
+
+    <div class="info-box">
+        <div class="info">
+            <strong>Número de Expediente:</strong>
+            <span id="txtExpediente">Cargando...</span>
+        </div>
+        <div class="info">
+            <strong>Estado:</strong>
+            <span id="txtEstado">Validando...</span>
+        </div>
+    </div>
+
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-text">Cargando datos del documento</div>
+        <div class="dots-container">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+
+    <div class="viewer" id="viewer" style="display:none;">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="menu-icon-custom" id="btnMenu" onclick="toggleSidebar()">
+                    <div class="menu-item-row"><span class="dot-indicator"></span><span class="menu-line"></span></div>
+                    <div class="menu-item-row"><span class="dot-indicator"></span><span class="menu-line"></span></div>
+                    <div class="menu-item-row"><span class="dot-indicator"></span><span class="menu-line"></span></div>
+                </div>
+            </div>
+            
+            <div class="toolbar-center">
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+            </div>
+            <div></div> 
+        </div>
+
+        <div class="workspace-container">
+            <div class="sidebar" id="sidebarPanel">
+                <div class="thumbnail-box">
+                    <img id="pdfThumbnail" class="thumbnail-img" src="" alt="Miniatura">
+                </div>
+            </div>
+
+            <div class="pdf-container">
+                <img id="pdfViewer" class="pdf-viewer" src="" alt="Documento de Expediente">
+            </div>
+        </div>
+    </div>
+
+    <div class="error-message" id="errorContainer" style="display:none;">
+        El expediente no existe o no está disponible.
+    </div>
+
+</div>
+
+<script>
+// Manejador del zoom mediante porcentaje nativo de ancho para no romper Flexbox
+let currentZoomPercent = 90; 
+
+function cargarExpediente(){
+    const params = new URLSearchParams(window.location.search);
+    const idExpediente = params.get('id');
+
+    const txtExpediente = document.getElementById('txtExpediente');
+    const txtEstado = document.getElementById('txtEstado');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const pdfThumbnail = document.getElementById('pdfThumbnail');
+    const errorContainer = document.getElementById('errorContainer');
+    
+    const loadingScreen = document.getElementById('loadingScreen');
+    const viewer = document.getElementById('viewer');
+
+    if(!idExpediente){
+        mostrarError('No se especificó ningún número de expediente.');
+        return;
+    }
+
+    const regex = /^DDRISS-(CMA|TS)-\d+$/;
+
+    if(!regex.test(idExpediente)){
+        mostrarError('El formato del número de expediente es inválido.');
+        return;
+    }
+
+    txtExpediente.innerText = idExpediente;
+    txtEstado.innerText = 'En emisión';
+
+    const rutaImagen = `expedientes/${idExpediente}.jpg`;
+
+    fetch(rutaImagen)
+    .then(response => {
+        if(response.ok){
+            pdfViewer.src = rutaImagen;
+            pdfThumbnail.src = rutaImagen;
+            
+            // Espera de 10 segundos exacta del video
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                viewer.style.display = 'block';
+                errorContainer.style.display = 'none';
+            }, 10000);
+
+        }else{
+            mostrarError('El expediente solicitado no fue encontrado en el servidor.');
+        }
+    })
+    .catch(() => {
+        mostrarError('Ocurrió un error al intentar consultar el documento.');
+    });
+}
+
+// Alternar panel lateral con redimensión física de elementos (Desplazamiento real)
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebarPanel');
+    sidebar.classList.toggle('open');
+}
+
+function zoomIn(){
+    if(currentZoomPercent < 150) {
+        currentZoomPercent += 10;
+        updateZoom();
+    }
+}
+
+function zoomOut(){
+    if(currentZoomPercent > 40){
+        currentZoomPercent -= 10;
+        updateZoom();
+    }
+}
+
+function updateZoom(){
+    // Modifica directamente el ancho físico para que interactúe de forma correcta con el panel lateral
+    document.getElementById('pdfViewer').style.width = currentZoomPercent + '%';
+}
+
+function mostrarError(mensaje){
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('viewer').style.display = 'none';
+    document.getElementById('errorContainer').style.display = 'block';
+    document.getElementById('errorContainer').innerText = mensaje;
+    document.getElementById('txtEstado').innerText = 'Error';
+}
+
+window.onload = cargarExpediente;
+</script>
+
+</body>
+</html>
